@@ -1,0 +1,7 @@
+# sidebar-manager bundle patch: one host row over whichever profile selects
+# this bundle. The row name resolves from the profile's own node_modules, where
+# `dsh plugin --profile <profile> add <path-or-package>` installed this package,
+# so it must stay equal to `package.json.name`.
+- insert:
+    - id: sidebar-manager
+      name: '@local/dsh-sidebar-manager'
