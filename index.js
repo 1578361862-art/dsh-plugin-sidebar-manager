@@ -15,7 +15,7 @@
  * The host half stores nothing else: the plugin has no tools, no session events,
  * and no model-facing surface.
  *
- * @module @local/dsh-sidebar-manager
+ * @module dsh-plugin-sidebar-manager
  */
 
 import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'

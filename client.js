@@ -26,7 +26,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: '@local/dsh-sidebar-manager',
+  id: 'dsh-plugin-sidebar-manager',
   factory(require) {
     const React = require('react')
     const { createPortal } = require('react-dom')
@@ -59,7 +59,7 @@ window.__ModuleLoader__.load({
     const GROUP_NAME_LIMIT = 40
     /** Same-origin route owned by the Host half. */
     const CONFIG_ROUTE = 'sidebar-manager/config'
-    const STYLE_TAG = '@local/dsh-sidebar-manager/sidebar.css'
+    const STYLE_TAG = 'dsh-plugin-sidebar-manager/sidebar.css'
 
     /** Absolute config URL: a reverse-proxied GUI keeps its directory prefix. */
     function route(path) {
@@ -131,7 +131,7 @@ nav > button[data-sm-nested]{padding-left:30px}
       if (typeof document === 'undefined') return
       if (document.querySelector(`style[data-plugin-css=${JSON.stringify(STYLE_TAG)}]`) !== null) return
       const tag = document.createElement('style')
-      tag.dataset.plugin = '@local/dsh-sidebar-manager'
+      tag.dataset.plugin = 'dsh-plugin-sidebar-manager'
       tag.dataset.pluginCss = STYLE_TAG
       tag.textContent = CSS
       document.head.appendChild(tag)

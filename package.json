@@ -1,22 +1,48 @@
 {
-  "name": "@local/dsh-sidebar-manager",
+  "name": "dsh-plugin-sidebar-manager",
   "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "Manage the left sidebar entries of the DSH Web GUI: hide the rows you do not use, keep the choice in the profile, and restore them from the More menu.",
+  "description": "Sidebar manager for the DSH Web GUI: hide the rows you do not use, reorder them, and group them into folders. 侧栏入口管理器：隐藏、排序、分组成文件夹。",
   "license": "MIT",
+  "author": "Yee",
+  "type": "module",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "sidebar",
+    "navigation",
+    "groups"
+  ],
   "main": "index.js",
   "exports": {
-    ".": "./index.js",
-    "./client": "./client.js"
+    ".": {
+      "default": "./index.js"
+    },
+    "./client": {
+      "default": "./client.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "index.js",
     "client.js",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "docs"
   ],
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.1-rc.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1578361862-art/dsh-plugin-sidebar-manager.git"
+  },
+  "homepage": "https://github.com/1578361862-art/dsh-plugin-sidebar-manager#readme",
+  "bugs": {
+    "url": "https://github.com/1578361862-art/dsh-plugin-sidebar-manager/issues"
+  },
   "dsh": {
+    "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
     },

@@ -4,4 +4,4 @@
 # so it must stay equal to `package.json.name`.
 - insert:
     - id: sidebar-manager
-      name: '@local/dsh-sidebar-manager'
+      name: 'dsh-plugin-sidebar-manager'

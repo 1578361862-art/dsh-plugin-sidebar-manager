@@ -1,79 +1,73 @@
-# @local/dsh-sidebar-manager
+# 侧栏分组 · dsh-plugin-sidebar-manager
 
-左侧栏入口管理器。给 DSH Web GUI 的左侧导航加一行 **More → Manage sidebar entries…**：列出所有注册到 `sidebar.panellist` 的插件面板，可以显示/隐藏、上下移动、建分组并把面板放进分组。选择保存在 profile 里，重载页面后照旧生效。文案跟随界面语言（中文 / English）。
+> 给 DSH 左侧栏加上隐藏、排序和分组：把几十行插件入口收成几行文件夹。
 
-## 它解决什么
+![DSH](https://img.shields.io/badge/DSH-%E2%89%A5%200.2.1--rc.5-4f46e5?style=flat-square)
+![Node](https://img.shields.io/badge/node-%E2%89%A5%2020-339933?style=flat-square&logo=nodedotjs&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square)
 
-DSH 的每个插件面板都会在左侧栏永久占一行，而内核没有提供入口管理：面板全显示、顺序由插件声明、More 菜单里只有「浏览插件 / 创建插件」。插件的 `setPinned` 机制存在，但只改内存、刷新即复原，也没有任何 UI 调用它。
+DSH 的每个插件面板都会在左侧栏占一行，顺序由插件自己声明，内核没有提供入口管理：More 菜单里只有「浏览插件 / 创建插件」。装到十几个插件之后，这一列就没法扫了。
 
-这个插件补上那一层：
+这个插件补上那一层。左侧栏 **More → Manage sidebar entries…** 打开管理对话框：
 
-- **显隐**：把不常用的面板行收起来，面板本身、插件、工具都不卸载；
-- **排序**：上下移，或直接从下拉里换分组；
-- **分组**：自建命名分组、改名、上下移动整块、删除；侧栏里每个分组就是一行文件夹，点一下展开/收起，成员缩进排在下面；
-- **持久化**：写 `$DSH_HOME/storages/sidebar-manager/config.json`，每次启动回放。
+- **显隐** —— 勾掉不常用面板的行；面板本身、插件、正在跑的任务都不受影响；
+- **排序** —— 上下移动，行序写回 sidebar 的注册项；
+- **分组** —— 建命名分组、改名、整块上下移动、删除；侧栏里每个分组就是一行文件夹，点一下展开/收起，成员缩进排在下面；
+- **持久化** —— 选择写进 profile，重载页面后照旧生效。
 
-## 边界
-
-- 只影响**行**。隐藏某个面板后，它的主面板、当前选中状态、后台运行都不变；如需真正卸载插件，用 Plugins 页的开关。
-- `Plugins` 行由内核写死：永远显示、永远是第一行，不进管理器。
-- 分组行是**本插件注册的合成面板**（id `sm-group:<gid>`），不是内核的分组：它占一行、有 chevron，行上盖了一层透明点击层，点整行 = 展开/收起（内核那套「点行 = 选中面板」被挡住）。成员行按「打开的分组」缩进，收起的组把成员从 pin 列表里藏掉，但插件和面板都还在。
-- 排序是改写注册项上的 `order` 值（内核没有改序接口）。这属于页面内状态：插件重载会恢复它声明的顺序，所以每次启动都要回放（见下）。
-
-## 结构
-
-| 文件 | 作用 |
-|---|---|
-| `index.js` | Host：`GET/PUT /sidebar-manager/config`，文件落 `$DSH_HOME/storages/sidebar-manager/config.json`，写入仅接受 loopback 对端；负责规范化和修复配置 |
-| `client.js` | 浏览器：More 菜单一行 + 常驻挂载点 + 管理对话框 + 侧栏标题绘制 |
-| `cordis.patch.yml` | 向 profile 插入一行 host 插件 |
-
-客户端是手写 bundle（`window.__ModuleLoader__.load` 注册 factory），不需要构建步骤；服务端只依赖 `webServer` 服务，没有工具、没有会话事件、不参与模型请求。
-
-## 配置格式（v2）
-
-```json
-{
-  "version": 2,
-  "hidden": ["github-radar"],
-  "groups": [{ "id": "g-daily", "name": "Daily" }],
-  "sections": ["g-daily", "__ungrouped__"],
-  "collapsed": [],
-  "placement": { "ai-daily": "g-daily" },
-  "order": ["ai-daily", "stock-shadow", "schedules"]
-}
-```
-
-- `sections` 决定分组块的先后，`__ungrouped__` 是隐含的「未分组」块，永远存在；
-- `collapsed` 是收起的文件夹 id；收起只是把成员行藏起来，不改变显隐勾选；
-- `order` 是块内的先后；块内按 `order` 里的下标排，未出现的面板按插件声明顺序排在后面；
-- v1（只有 `hidden`）会被自动规范化升级。
-
-## 启动时怎么生效
-
-侧栏的 pin 集合不是服务，只通过 `sidebar.panellist.actions` 的 `onPinnedChange` 属性发给菜单里的注册项——而对话框必须在 More 从未打开时就把行藏好。所以启动路径是：读 sidebar 自己的 slot 注册，调用它的 `inject()` 拿到同一个 `setPinned`。
-
-侧栏的注册可能晚于本插件，所以：`apply` 里立即尝试一次 → 按帧重试（最多 30 帧）→ `sidebar` / `sidebar.panellist` 的 slot 变化各触发一次重试。
-
-排序则反过来：把算好的 `order` 写回各插件注册时的 options 对象，再注册并立刻 dispose 一个临时行，让 slot 注册表发一次变更、sidebar 重新排序；两次操作在同一个任务里，React 不会画出那一行。
-
-## 顺序的稳定基线
-
-插件注册时声明的 `order` 会被本插件覆盖，所以「插件原本想放哪」必须记住：每个面板第一次出现时把它的声明值存进 `baseline`，保存的 `order` 里没有的面板按这个基线排在块尾。否则每次重算都会把当前顺序当输入，顺序会自己漂移。
+界面文案跟随 DSH 的界面语言（中文 / English）。
 
 ## 安装
 
 ```sh
-dsh plugin --profile desktop add link:/Users/yee/Work/dsh/default-workspace/sidebar-manager-plugin
+dsh plugin --profile <profile> add https://github.com/1578361862-art/dsh-plugin-sidebar-manager/releases/latest/download/dsh-plugin-sidebar-manager.tgz
 ```
 
-Host 半边改动后需要重载插件才会生效（Plugins 页关一次再开，或重启应用）；客户端半边改完刷新页面即可。
+`<profile>` 换成你实际的 profile 名：DSH Desktop 是 `desktop`，`dsh web` 一般是 `web`。装完重启 DSH。
 
-## 已验证
+也可以从仓库源码装（需要 pnpm 允许构建，本插件没有构建步骤）：
 
-- 隐藏/显示、全部显示、重载后保持；
-- 建分组、改名（聚焦即全选）、把面板移进/移出分组、行上下移跨越分组边界；
-- 分组整块上下移动、删除分组（成员回到未分组）；
-- 点文件夹行展开/收起（真实鼠标点击验证），成员行随之出现/消失，状态写进 `collapsed`；
-- 改分组名后侧栏那一行的文字立即跟着变（靠一次额外的 registry sync）；
-- 关对话框时若有未落盘的改动会立即 flush，不等 250ms 防抖。
+```sh
+dsh plugin --profile <profile> add github:1578361862-art/dsh-plugin-sidebar-manager
+```
+
+## 用法
+
+1. 左侧栏底部 **More** → **Manage sidebar entries…**
+2. 每一行是一个已注册的面板：开关控制显隐，右侧 ↑ ↓ 调顺序，下拉框放进分组
+3. 底部「新建分组」，分组按你排的顺序成为侧栏里的文件夹行
+4. 点侧栏里的文件夹行 = 展开/收起；点「全部显示」把所有行放回来
+
+排序立即生效，不需要重启；改动在关闭对话框时落盘（有 250ms 防抖，关窗会强制 flush）。
+
+## 边界
+
+- **只影响行**。隐藏一个面板不卸载插件，也不影响它的主面板、当前选中状态和后台任务；真要卸载，用 Plugins 页的开关。
+- **`Plugins` 行由内核写死**：永远显示、永远是第一行，不进管理器。
+- **分组行是本插件注册的合成面板**（`sm-group:<gid>`），不是内核的分组机制：它占一行、有 chevron，行上盖了一层透明点击层，所以点整行是展开/收起，而不是选中某个面板。
+- **排序是页面内状态**：排序靠改写注册项上的 `order` 值实现（内核没有改序接口），插件重载会恢复它自己声明的顺序，所以每次启动都重放一遍配置。
+- 只支持 Web 端（`platform: web`），不涉及终端界面。
+
+## 配置在哪
+
+```text
+$DSH_HOME/storages/sidebar-manager/config.json
+```
+
+内容是一个带 `version` 的 JSON：`hidden`（隐藏的行）、`groups`（分组定义）、`sections`（分组块顺序）、`collapsed`（收起的文件夹）、`placement`（行 → 分组）、`order`（块内顺序）。写在 loopback 的 `PUT /sidebar-manager/config`，只接受本机对端。
+
+## 卸载
+
+```sh
+dsh plugin --profile <profile> remove dsh-plugin-sidebar-manager
+```
+
+侧栏回到「所有行都显示、按插件声明的顺序」。配置留在 `storages/sidebar-manager/config.json`，想彻底清掉就删这个目录。
+
+## 实现
+
+Host 半边只有一条读写配置的路由，客户端半边是手写 bundle（无构建步骤）：显隐用 sidebar 的 `setPinned`，排序靠「改写 options.order → 注册 → 立刻 dispose 一个临时行」逼 registry 重排，分组行是合成面板加一层透明 hit 层。细节、启动时序和已验证项见 [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)。
+
+## 许可
+
+[MIT](LICENSE) © Yee
